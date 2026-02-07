@@ -1,0 +1,9 @@
+.venv
+venv
+__init__
+__init__.py
+__pycache__
+assets
+data
+config.py
+.env
