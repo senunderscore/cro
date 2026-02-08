@@ -24,6 +24,32 @@ class Fun(commands.Cog):
             "Outlook not so good.", "Very doubtful."
         ]
 
+    def _contains_unsafe_mention(self, text: str) -> bool:
+        """Return True if the text contains mention forms that could ping users/roles/channels."""
+        if not text:
+            return False
+        low = text.lower()
+        if '@everyone' in low or '@here' in low:
+            return True
+        if re.search(r'<@&\d+>', text):
+            return True
+        if re.search(r'<@!?.+?>', text):
+            return True
+        if re.search(r'<#\d+>', text):
+            return True
+        return False
+
+    def _sanitize_text(self, text: str) -> str:
+        """Escape mentions/markdown and replace raw mention tokens with safe placeholders."""
+        if text is None:
+            return ''
+        text = discord.utils.escape_mentions(text)
+        text = discord.utils.escape_markdown(text)
+        text = re.sub(r'<@&\d+>', '[role]', text)
+        text = re.sub(r'<@!?(\d+)>', '[user]', text)
+        text = re.sub(r'<#\d+>', '[channel]', text)
+        return text
+
     @commands.command()
     async def roll(self, ctx, dice: str = "1d6"):
         """Roll dice in NdN format"""
@@ -420,11 +446,19 @@ class Fun(commands.Cog):
     @commands.command()
     async def reverse(self, ctx, *, text: str):
         """Reverse any text"""
-        if '@everyone' in text or '@here' in text:
+        if self._contains_unsafe_mention(text):
             await ctx.send("Nice try!")
             return
-        text = discord.utils.escape_mentions(text)
-        await ctx.send(text[::-1])
+
+        text = self._sanitize_text(text)
+        reversed_text = text[::-1]
+
+        low = reversed_text.lower()
+        if '@everyone' in low or '@here' in low or '<@' in reversed_text or '<#' in reversed_text or '<@&' in reversed_text:
+            await ctx.send("Nice try!")
+            return
+
+        await ctx.send(reversed_text)
 
     @commands.command()
     async def mock(self, ctx, *, text: Optional[str] = None):
@@ -457,11 +491,11 @@ class Fun(commands.Cog):
             await ctx.send("Nothing to mock.")
             return
 
-        if '@everyone' in text or '@here' in text:
+        if self._contains_unsafe_mention(text):
             await ctx.send("Nice try!")
             return
 
-        text = discord.utils.escape_mentions(text)
+        text = self._sanitize_text(text)
 
         output = ''
         last_upper = False
@@ -493,12 +527,11 @@ class Fun(commands.Cog):
                 await ctx.send("Couldn't fetch the replied message!")
                 return
         
-        if '@everyone' in text or '@here' in text:
+        if self._contains_unsafe_mention(text):
             await ctx.send("Nice try!")
             return
-            
-        text = discord.utils.escape_mentions(text)
-        text = discord.utils.escape_markdown(text)
+
+        text = self._sanitize_text(text)
         
         uwu_map = {
             'r': 'w',
@@ -584,13 +617,12 @@ class Fun(commands.Cog):
     @PermissionHandler.has_permissions(Administrator=True)
     async def echo(self, ctx, *, message: str):
         """Echo a message"""
-        if '@everyone' in message or '@here' in message:
+        if self._contains_unsafe_mention(message):
             await ctx.send("Nice try.")
             return
-            
-        message = discord.utils.escape_mentions(message)
-        message = discord.utils.escape_markdown(message)
-        
+
+        message = self._sanitize_text(message)
+
         await ctx.message.delete()
         await ctx.send(message)
 
