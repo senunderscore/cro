@@ -5,5 +5,6 @@ __init__.py
 __pycache__
 assets
 data
+discord-bot-env
 config.py
 .env
