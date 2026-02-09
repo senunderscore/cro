@@ -30,7 +30,7 @@ class ErrorEvents(commands.Cog):
             if content.strip() in expressions or all(c in '?!.' for c in content.strip()):
                 return
             
-            await ctx.send(f"**Unknown command**.\nUse `{ctx.prefix}help` for a list of commands.")
+            await ctx.send(f"**Unknown command**.\nUse `{ctx.prefix}commands` for a list of commands.")
             return
 
         if isinstance(error, commands.MissingPermissions):
