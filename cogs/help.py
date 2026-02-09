@@ -48,7 +48,7 @@ class Help(commands.Cog):
             logger.debug(f"Error checking command permission: {e}")
             return False
 
-    @commands.command(aliases=['h', '?'])
+    @commands.command(aliases=['h'])
     async def help(self, ctx: commands.Context, *, command_name: Optional[str] = None) -> None:
         """Get help about anything.
         
@@ -166,7 +166,7 @@ class Help(commands.Cog):
         embed.add_field(
             name="Pro Tips",
             value=(
-                f"Aliases for help: `?`, `h`\n"
+                f"Alias for help: `?h`\n"
                 f"Change prefix: `{ctx.prefix}config prefix <new>`\n"
                 f"Need admin tools? Try `{ctx.prefix}admin` commands"
             ),
