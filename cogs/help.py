@@ -6,7 +6,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Help(commands.Cog):
-    """Help and command discovery system."""
+    """Help and command discovery system.
+
+    This cog provides a text-based help system (no slash commands).
+    """
     
     def __init__(self, bot: commands.Bot) -> None:
         """Initialize the Help cog."""
@@ -49,19 +52,11 @@ class Help(commands.Cog):
             return False
 
     @commands.command(aliases=['h'])
+    @commands.cooldown(1, 2, commands.BucketType.user)
     async def help(self, ctx: commands.Context, *, command_name: Optional[str] = None) -> None:
         """Get help about anything.
-        
-        **Examples:**
-        • `?help` — See what I can do
-        • `?help eval` — Learn about the eval command
-        • `?help admin` — See all admin commands
-        • `?help moderation` — See all moderation commands
-        
-        **Pro tips:**
-        • You can use `?h` or just `?` instead of `?help`
-        • Use `?commands` to see everything organized
-        • Missing help? Use `?help <category>` instead
+
+        Use `<prefix>help` to get started. Replace `<prefix>` with your server prefix.
         """
         if command_name:
             command = self.bot.get_command(command_name)
@@ -126,7 +121,7 @@ class Help(commands.Cog):
             ctx: Command context
         """
         member = ctx.guild.get_member(self.bot.user.id) if ctx.guild else None
-        color = member.color if member else 0x2B2D31
+        color = member.color if member else discord.Color.blurple()
 
         embed = discord.Embed(
             title="About Cro",
@@ -156,9 +151,9 @@ class Help(commands.Cog):
         embed.add_field(
             name="Quick Start",
             value=(
-                "1. Run `?commands` to see what's available\n"
-                "2. `?help <command>` for details\n"
-                "3. Configure with `?config` for server-specific options"
+                f"1. Run `{ctx.prefix}commands` to see what's available\n"
+                f"2. `{ctx.prefix}help <command>` for details\n"
+                f"3. Configure with `{ctx.prefix}config` for server-specific options"
             ),
             inline=False
         )
@@ -166,14 +161,14 @@ class Help(commands.Cog):
         embed.add_field(
             name="Pro Tips",
             value=(
-                f"Alias for help: `?h`\n"
+                f"Alias for help: `{ctx.prefix}h`\n"
                 f"Change prefix: `{ctx.prefix}config prefix <new>`\n"
                 f"Need admin tools? Try `{ctx.prefix}admin` commands"
             ),
             inline=False
         )
 
-        embed.set_footer(text="Use ?help <command> for details on any command.")
+        embed.set_footer(text=f"Use {ctx.prefix}help <command> for details on any command.")
         await ctx.send(embed=embed)
 
     @commands.command(name="listcogs")
@@ -233,18 +228,19 @@ class Help(commands.Cog):
         if hidden_commands > 0:
             embed.set_footer(text=f"{hidden_commands} command(s) hidden (no permission)")
         else:
-            embed.set_footer(text="Need help with a command? Use ?help <command>")
+            embed.set_footer(text=f"Need help with a command? Use {ctx.prefix}help <command>")
         
         await ctx.send(embed=embed)
 
     @commands.command(aliases=['cmds', 'cmd'])
+    @commands.cooldown(1, 2, commands.BucketType.user)
     async def commands(self, ctx: commands.Context) -> None:
         """See all available commands organized by category.
         
         This is basically the command catalog - everything I can do for your server.
         
-        **Want details?** Use `?help <command>` for any command you see here
-        **Want to explore?** Use `?help <category>` to dive into a specific area
+        **Want details?** Use `<prefix>help <command>` for any command you see here
+        **Want to explore?** Use `<prefix>help <category>` to dive into a specific area
         """
         commands_by_cog = {}
         permission_limited = {}
@@ -311,7 +307,7 @@ class Help(commands.Cog):
             )
         
         embed.set_footer(
-            text="Tip: Just mention me to see my current prefix! | ?help is your friend"
+            text=f"Tip: Just mention me to see my current prefix! | {ctx.prefix}help is your friend"
         )
         
         await ctx.send(embed=embed)
