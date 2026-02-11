@@ -26,12 +26,13 @@ class MessageEvents(commands.Cog):
         ):
             if not message.reference and message.type != discord.MessageType.reply:
                 try:
-                    with open('data/strings.json', 'r') as f:
-                        strings = json.load(f)
-                        responses = strings['ping_responses']
-                        await message.channel.send(random.choice(responses))
+                    from utils.helpers.strings import get_random
+
+                    reply = get_random('ping_responses', ["Hello!"])
+                    await message.channel.send(reply)
                 except Exception as e:
-                    print(f"Error handling ping response: {e}")
+                    logger = __import__('logging').getLogger(__name__)
+                    logger.exception(f"Error handling ping response: {e}")
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
