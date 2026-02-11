@@ -687,10 +687,9 @@ class Fun(commands.Cog):
             await ctx.send("Nice try.")
             return
 
-        with open('data/strings.json', 'r') as f:
-            strings = json.load(f)
-            action = random.choice(strings['user_was_x'])
+        from utils.helpers.strings import get_random
 
+        action = get_random('user_was_x', ["beaned"]) 
         await ctx.send(f"**{member.display_name}** was {action}")
 
     @commands.command(name='8ball', aliases=['8'])
