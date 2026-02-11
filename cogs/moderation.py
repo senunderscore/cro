@@ -196,48 +196,28 @@ class Moderation(commands.Cog):
             if member.top_role >= ctx.author.top_role:
                 await ctx.send("You cannot kick someone with a higher or equal role!")
                 return
+            bot_member = ctx.guild.me
+            if bot_member and member.top_role >= bot_member.top_role:
+                await ctx.send("I cannot kick that user because their role is higher or equal to mine.")
+                return
 
-            confirm_view = discord.ui.View()
-            confirm_button = discord.ui.Button(label="Confirm", style=discord.ButtonStyle.danger)
-            cancel_button = discord.ui.Button(label="Cancel", style=discord.ButtonStyle.secondary)
+            try:
+                await member.kick(reason=reason)
+                case_id = await self.save_mod_action(ctx.guild.id, {
+                    'user_id': member.id,
+                    'mod_id': ctx.author.id,
+                    'action': 'Kick',
+                    'reason': reason
+                })
+                await self.log_mod_action(ctx, "Kick", member, case_id, reason=reason)
 
-            async def confirm_callback(interaction):
-                if interaction.user != ctx.author:
-                    await interaction.response.send_message("This is not for you!", ephemeral=True)
-                    return
-
-                try:
-                    await member.kick(reason=reason)
-                    case_id = await self.save_mod_action(ctx.guild.id, {
-                        'user_id': member.id,
-                        'mod_id': ctx.author.id,
-                        'action': 'Kick',
-                        'reason': reason
-                    })
-                    await self.log_mod_action(ctx, "Kicked", member, case_id, reason=reason)
-                    await ctx.send(f"**{member.name}** was kicked")
-                    await interaction.message.delete()
-                except discord.Forbidden:
-                    await ctx.send("I don't have permission to kick that user!")
-                except Exception as e:
-                    await ctx.send(f"An error occurred: {str(e)}")
-
-            async def cancel_callback(interaction):
-                if interaction.user != ctx.author:
-                    await interaction.response.send_message("This is not for you!", ephemeral=True)
-                    return
-                await interaction.message.delete()
-
-            confirm_button.callback = confirm_callback
-            cancel_button.callback = cancel_callback
-            confirm_view.add_item(confirm_button)
-            confirm_view.add_item(cancel_button)
-
-            await ctx.send(
-                f"Are you sure you want to kick **{member.name}**?" + 
-                (f"\nReason: {reason}" if reason else ""), 
-                view=confirm_view
-            )
+                from utils.helpers.strings import get_random
+                action = get_random('user_was_x', ['kicked'])
+                await ctx.send(f"**{member.name}** was {action}")
+            except discord.Forbidden:
+                await ctx.send("I don't have permission to kick that user!")
+            except Exception as e:
+                await ctx.send(f"An error occurred: {str(e)}")
 
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
@@ -279,89 +259,29 @@ class Moderation(commands.Cog):
                 if user.top_role >= ctx.author.top_role:
                     await ctx.reply("You cannot ban someone with a higher or equal role!")
                     return
+            bot_member = ctx.guild.me
+            if isinstance(user, discord.Member) and bot_member and user.top_role >= bot_member.top_role:
+                await ctx.reply("I cannot ban that user because their role is higher or equal to mine.")
+                return
 
-            confirm_view = discord.ui.View()
-            confirm_button = discord.ui.Button(label="Confirm", style=discord.ButtonStyle.danger)
-            cancel_button = discord.ui.Button(label="Cancel", style=discord.ButtonStyle.secondary)
-            compromised_button = discord.ui.Button(label="Compromised account", style=discord.ButtonStyle.primary)
+            try:
+                await ctx.guild.ban(user, reason=reason)
+                case_id = await self.save_mod_action(ctx.guild.id, {
+                    'user_id': user.id,
+                    'mod_id': ctx.author.id,
+                    'action': 'Ban',
+                    'reason': reason
+                })
 
-            async def confirm_callback(interaction):
-                if interaction.user != ctx.author:
-                    await interaction.response.send_message("This is not for you!", ephemeral=True)
-                    return
+                await self.log_mod_action(ctx, "Ban", user, case_id, reason=reason)
 
-                try:
-                    await ctx.guild.ban(user, reason=reason)
-                    case_id = await self.save_mod_action(ctx.guild.id, {
-                        'user_id': user.id,
-                        'mod_id': ctx.author.id,
-                        'action': 'Ban',
-                        'reason': reason
-                    })
-
-                    embed = discord.Embed(
-                        title=f"You were banned from {ctx.guild.name}",
-                        color=discord.Color.red()
-                    )
-                    if reason:
-                        embed.add_field(name="Reason", value=reason)
-                    
-                    await self.log_mod_action(ctx, "Ban", user, case_id, reason=reason)
-                
-                    with open('data/strings.json', 'r') as f:
-                        strings = json.load(f)
-                        action = random.choice(strings['user_was_x'])
-                
-                    await confirm_message.edit(content=f"**{user}** was {action}", view=None)
-                    await interaction.response.defer()
-                except Exception as e:
-                    await confirm_message.edit(content=f"Error: {str(e)}", view=None)
-
-            async def compromised_callback(interaction):
-                if interaction.user != ctx.author:
-                    await interaction.response.send_message("This is not for you!", ephemeral=True)
-                    return
-
-                try:
-                    await interaction.response.defer()
-                    dm_message = (
-                        f"You were banned from {ctx.guild.name} because your account showed signs of being compromised.\n\n"
-                        "For your security, please:\n"
-                        "1. Change your Discord password\n"
-                        "2. Enable 2-factor authentication\n"
-                        "3. Remove any suspicious authorized apps\n"
-                        "4. Check for suspicious login locations\n\n"
-                        "You have been automatically unbanned and can re-join once you've secured your account."
-                    )
-
-                    await user.ban(reason="Compromised account", delete_message_days=1)
-                    case_id = await self.save_mod_action(ctx.guild.id, {
-                        'user_id': user.id,
-                        'mod_id': ctx.author.id,
-                        'action': 'Ban',
-                        'reason': "Compromised account"
-                    })
-                    await self.log_mod_action(ctx, "Ban", user, case_id, reason="Compromised account")
-                    await asyncio.sleep(2)
-                    await ctx.guild.unban(user)
-                    await interaction.message.edit(f"**{user}** was banned for compromised account")
-                except Exception as e:
-                    await interaction.message.edit(f"Error handling compromised account: {str(e)}")
-            
-            async def cancel_callback(interaction):
-                if interaction.user != ctx.author:
-                    await interaction.response.send_message("This is not for you!", ephemeral=True)
-                    return
-                await interaction.message.delete()
-
-            confirm_button.callback = confirm_callback
-            cancel_button.callback = cancel_callback
-            compromised_button.callback = compromised_callback
-            confirm_view.add_item(confirm_button)
-            confirm_view.add_item(cancel_button)
-            confirm_view.add_item(compromised_button)
-
-            confirm_message = await ctx.reply(f"Are you sure you want to ban **{user}**?", view=confirm_view)
+                from utils.helpers.strings import get_random
+                action = get_random('user_was_x', ['banned'])
+                await ctx.reply(f"**{user}** was {action}")
+            except discord.Forbidden:
+                await ctx.send("I don't have permission to ban that user!")
+            except Exception as e:
+                await ctx.send(f"An error occurred: {str(e)}")
 
         except discord.Forbidden:
             await ctx.send("I don't have permission to ban that user!")
@@ -827,52 +747,29 @@ class Moderation(commands.Cog):
                 await ctx.reply("You cannot softban someone with a higher or equal role!")
                 return
 
-            confirm_view = discord.ui.View()
-            confirm_button = discord.ui.Button(label="Confirm", style=discord.ButtonStyle.danger)
-            cancel_button = discord.ui.Button(label="Cancel", style=discord.ButtonStyle.secondary)
+            bot_member = ctx.guild.me
+            if bot_member and member.top_role >= bot_member.top_role:
+                await ctx.reply("I cannot softban that user because their role is higher or equal to mine.")
+                return
 
-            async def confirm_callback(interaction):
-                if interaction.user != ctx.author:
-                    await interaction.response.send_message("This is not for you!", ephemeral=True)
-                    return
+            try:
+                await member.ban(reason=reason, delete_message_days=days)
+                case_id = await self.save_mod_action(ctx.guild.id, {
+                    'user_id': member.id,
+                    'mod_id': ctx.author.id,
+                    'action': 'Softban',
+                    'reason': reason
+                })
+                await self.log_mod_action(ctx, "Softban", member, case_id, reason=reason)
+                await ctx.guild.unban(member)
 
-                try:
-                    await member.ban(reason=reason, delete_message_days=days)
-                    case_id = await self.save_mod_action(ctx.guild.id, {
-                        'user_id': member.id,
-                        'mod_id': ctx.author.id,
-                        'action': 'Softban',
-                        'reason': reason
-                    })
-                    await self.log_mod_action(ctx, "Softbanned", member, case_id, reason=reason)
-                    await ctx.guild.unban(member)
-                    
-                    with open('data/strings.json', 'r') as f:
-                        strings = json.load(f)
-                        action = random.choice(strings['user_was_x'])
-                    
-                    await confirm_message.edit(content=f"**{member.name}** was {action}", view=None)
-                    await interaction.response.defer()
-                except Exception as e:
-                    await confirm_message.edit(content=f"Error: {str(e)}", view=None)
-                    await interaction.response.defer()
-
-            async def cancel_callback(interaction):
-                if interaction.user != ctx.author:
-                    await interaction.response.send_message("This is not for you!", ephemeral=True)
-                    return
-                await interaction.message.delete()
-
-            confirm_button.callback = confirm_callback
-            cancel_button.callback = cancel_callback
-            confirm_view.add_item(confirm_button)
-            confirm_view.add_item(cancel_button)
-
-            confirm_message = await ctx.send(
-                f"Are you sure you want to softban **{member.name}**?" +
-                (f"\nReason: {reason}" if reason else ""),
-                view=confirm_view
-            )
+                from utils.helpers.strings import get_random
+                action = get_random('user_was_x', ['softbanned'])
+                await ctx.send(f"**{member.name}** was {action}")
+            except discord.Forbidden:
+                await ctx.send("I don't have permission to ban that user!")
+            except Exception as e:
+                await ctx.send(f"An error occurred: {str(e)}")
 
         except Exception as e:
             await ctx.send(f"An error occurred: {str(e)}")
@@ -958,62 +855,40 @@ class Moderation(commands.Cog):
             await ctx.send("No valid members provided!")
             return
 
-        confirm_view = discord.ui.View()
-        confirm_button = discord.ui.Button(label="Confirm", style=discord.ButtonStyle.danger)
-        cancel_button = discord.ui.Button(label="Cancel", style=discord.ButtonStyle.secondary)
+        success = []
+        failed = []
+        bot_member = ctx.guild.me
+        for member in members:
+            try:
+                if member.top_role >= ctx.author.top_role:
+                    failed.append(f"**{member.name}** (higher role)")
+                    continue
 
-        async def confirm_callback(interaction):
-            if interaction.user != ctx.author:
-                await interaction.response.send_message("This is not for you!", ephemeral=True)
-                return
+                if bot_member and member.top_role >= bot_member.top_role:
+                    failed.append(f"**{member.name}** (higher than bot)")
+                    continue
 
-            success = []
-            failed = []
-            for member in members:
-                try:
-                    if member.top_role >= ctx.author.top_role:
-                        failed.append(f"**{member.name}** (higher role)")
-                        continue
-                        
-                    await member.ban(reason=reason, delete_message_days=days)
-                    case_id = await self.save_mod_action(ctx.guild.id, {
-                        'user_id': member.id,
-                        'mod_id': ctx.author.id,
-                        'action': 'Massban',
-                        'reason': reason
-                    })
-                    await self.log_mod_action(ctx, "Massban", member, case_id, reason=reason)
-                    success.append(member.name)
-                except:
-                    failed.append(member.name)
+                await member.ban(reason=reason, delete_message_days=days)
+                case_id = await self.save_mod_action(ctx.guild.id, {
+                    'user_id': member.id,
+                    'mod_id': ctx.author.id,
+                    'action': 'Massban',
+                    'reason': reason
+                })
+                await self.log_mod_action(ctx, "Massban", member, case_id, reason=reason)
+                success.append(member.name)
+            except Exception:
+                failed.append(member.name)
 
-            report = f"Banned {len(success)} members"
-            if success:
-                report += f"\nSuccess: {', '.join(success[:10])}" + ("..." if len(success) > 10 else "")
-            if failed:
-                report += f"\nFailed: {', '.join(failed[:10])}" + ("..." if len(failed) > 10 else "")
-                
-            await confirm_message.edit(content=report, view=None)
-            await interaction.response.defer()
+        report = f"Banned {len(success)} members"
+        if success:
+            report += f"\nSuccess: {', '.join(success[:10])}" + ("..." if len(success) > 10 else "")
+        if failed:
+            report += f"\nFailed: {', '.join(failed[:10])}" + ("..." if len(failed) > 10 else "")
 
-        async def cancel_callback(interaction):
-            if interaction.user != ctx.author:
-                await interaction.response.send_message("This is not for you!", ephemeral=True)
-                return
-            await interaction.message.delete()
-
-        confirm_button.callback = confirm_callback
-        cancel_button.callback = cancel_callback
-        confirm_view.add_item(confirm_button)
-        confirm_view.add_item(cancel_button)
-
-        confirm_message = await ctx.send(
-            f"Are you sure you want to ban {len(members)} members?\n" +
-            "\n".join(f"- **{member.name}** ({member.id})" for member in members[:10]) +
-            ("\n..." if len(members) > 10 else "") +
-            (f"\nReason: {reason}" if reason else ""),
-            view=confirm_view
-        )
+        from utils.helpers.strings import get_random
+        summary_action = get_random('user_was_x', ['banned'])
+        await ctx.send(report + f"\nAll done; users were {summary_action}.")
 
     @commands.group(invoke_without_command=True)
     @PermissionHandler.has_permissions(kick_members=True)
