@@ -45,23 +45,23 @@ class Bot(commands.Bot):
     ## Setup Hook
     #################################
     async def setup_hook(self):
-        print("Loading core events...")
+        logger.info("Loading core events...")
         for event in ['logging', 'messages', 'errors']:
             try:
                 await self.load_extension(f"events.core.{event}")
-                print(f"Loaded events.core.{event}")
+                logger.info(f"Loaded events.core.{event}")
             except Exception as e:
-                print(f"Failed to load events.core.{event}: {e}")
+                logger.exception(f"Failed to load events.core.{event}")
 
-        print("Loading feature events...")
+        logger.info("Loading feature events...")
         for event in ['starboard', 'tracking']:
             try:
                 await self.load_extension(f"events.features.{event}")
-                print(f"Loaded events.features.{event}")
+                logger.info(f"Loaded events.features.{event}")
             except Exception as e:
-                print(f"Failed to load events.features.{event}: {e}")
+                logger.exception(f"Failed to load events.features.{event}")
 
-        print("Loading cogs...")
+        logger.info("Loading cogs...")
         for extension in [
             "cogs.moderation",
             "cogs.admin",
@@ -71,19 +71,25 @@ class Bot(commands.Bot):
         ]:
             try:
                 await self.load_extension(extension)
-                print(f"Loaded {extension}")
+                logger.info(f"Loaded {extension}")
             except Exception as e:
-                print(f"Failed to load {extension}: {e}")
+                logger.exception(f"Failed to load {extension}")
 
     #################################
     ## Ready and Status
     #################################
     async def on_ready(self):
-        print(f"{self.user} is online!")
+        logger.info(f"{self.user} is online!")
 
-        with open("data/strings.json", "r", encoding="utf-8") as f:
-            strings = json.load(f)
-            status_messages = strings.get("status", [])
+        status_messages = []
+        try:
+            with open("data/strings.json", "r", encoding="utf-8") as f:
+                strings = json.load(f)
+                status_messages = strings.get("status", []) if isinstance(strings, dict) else []
+        except FileNotFoundError:
+            logger.warning("data/strings.json not found; using default status message")
+        except json.JSONDecodeError:
+            logger.exception("Failed to parse data/strings.json; using default status message")
 
         await self.change_presence(
             status=discord.Status.idle,
