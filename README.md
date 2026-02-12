@@ -52,19 +52,14 @@ python main.py
 
 ## Configuration
 
-### Environment Variables (Recommended)
-```bash
-export TOKEN="your-discord-bot-token"
-export BOT_MASTERS="123456789,987654321"  # Comma-separated user IDs
-export TWITCH_CLIENT_ID="your-twitch-id"
-export STEAM_API_KEY="your-steam-key"
-```
-
-### Or use .env file
+### Use .env file
 Create `.env` in the project root and the bot will auto-load it.
-
-### Or use config.py
-Copy `example-config.py` to `config.py` and edit directly (not recommended for secrets).
+```bash
+TOKEN="your-discord-bot-token"
+BOT_MASTERS="123456789,987654321"  # Comma-separated user IDs
+TWITCH_CLIENT_ID="your-twitch-id"
+STEAM_API_KEY="your-steam-key"
+```
 
 ## Project Structure
 
