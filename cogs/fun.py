@@ -223,7 +223,7 @@ class Fun(commands.Cog):
             "a bowl of day-old cereal",
             "a scented candle that smells like 'regret'"
         ]
-        await ctx.send(f"{ctx.author.name} slaps **{member.name}** with {random.choice(items)}")
+        await ctx.send(f"**{ctx.author.name}** slaps **{member.name}** with {random.choice(items)}")
 
     @commands.command()
     async def throw(self, ctx, member: discord.Member = None):
@@ -276,7 +276,7 @@ class Fun(commands.Cog):
             "a papier-mâché llama",
             "a bag labeled 'probably socks'"
         ]
-        await ctx.send(f"{ctx.author.name} throws {random.choice(items)} at **{member.name}**")
+        await ctx.send(f"**{ctx.author.name}** throws {random.choice(items)} at **{member.name}**")
 
     ###########################
     ## Cookie System Commands
