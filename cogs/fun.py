@@ -1,6 +1,7 @@
 import random
 import json
 import discord
+import shlex
 from datetime import datetime, timedelta
 from typing import Union, Optional
 import urllib.parse
@@ -629,15 +630,42 @@ class Fun(commands.Cog):
     @commands.command()
     async def choose(self, ctx, *, choices: str):
         """Choose between multiple options"""
-        options = [opt.strip() for opt in choices.split(',') if opt.strip()]
-        
-        if len(options) < 2:
-            await ctx.send("Please provide at least 2 options separated by commas!")
+        if not choices or not choices.strip():
+            await ctx.send("I couldn't find any options to choose from.")
             return
 
-        choice = random.choice(options)
-        
-        await ctx.send(f"**{choice}**")
+        options = [opt.strip() for opt in choices.split(',') if opt.strip()]
+
+        if len(options) < 2:
+            options = [opt.strip() for opt in re.split(r'(?i)\s+or\s+|\s*\|\s*|/|;', choices) if opt.strip()]
+
+        if len(options) < 2:
+            try:
+                parts = shlex.split(choices)
+                options = [p.strip() for p in parts if p.strip()]
+            except Exception:
+                options = [o for o in choices.split() if o.strip()]
+
+        if len(options) == 1:
+            opt = options[0]
+            if self._contains_unsafe_mention(opt):
+                opt = self._sanitize_text(opt)
+            await ctx.send(f"I only see one option, so I'll pick {opt}.")
+            return
+
+        if not options:
+            await ctx.send("I couldn't find any choices.")
+            return
+
+        safe_options = []
+        for o in options:
+            if self._contains_unsafe_mention(o):
+                safe_options.append(self._sanitize_text(o))
+            else:
+                safe_options.append(o)
+
+        choice = random.choice(safe_options)
+        await ctx.send(f"{choice}")
 
     @commands.command()
     async def snipe(self, ctx):
