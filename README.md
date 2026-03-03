@@ -1,6 +1,7 @@
 # This is Cro
 
 Cro is a multipurpose Discord bot built with discord.py. It uses prefix commands and is split into modular cogs.
+
 Proudly hosted @ Fontys Hogeschool Eindhoven
 
 ## Features
